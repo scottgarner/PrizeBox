@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+.trigger {
+  @apply rounded;
+  @apply text-white;
+  @apply block;
+  @apply bg-blue-500;
+  @apply p-2;
+  @apply mb-2;
+  @apply w-full;
+}
+
+.trigger:active {
+  @apply bg-blue-600;
+}
