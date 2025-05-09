@@ -1,4 +1,11 @@
-export default class PrizeBox {
+export enum MessageType {
+  KEY_PRESS = 0x01,
+  SET_LIGHT_STATE = 0x02,
+  TRIGGER_UNLOCK = 0x03,
+  TRIGGER_BUZZER = 0x04,
+}
+
+export class PrizeBox {
   private callback: (data: Uint8Array) => void = () => {};
   private output: MIDIOutput | null = null;
 
@@ -13,9 +20,9 @@ export default class PrizeBox {
 
     this.output = outputs[0];
 
-    inputs[0].onmidimessage = (e: WebMidi.MIDIMessageEvent) => {
+    inputs[0].onmidimessage = (e: MIDIMessageEvent) => {
       console.log("Received", e.data);
-      this.callback(new Uint8Array(e.data));
+      this.callback(new Uint8Array(e.data!));
     };
 
     outputs.forEach((o) => console.log("Output:", o.name));

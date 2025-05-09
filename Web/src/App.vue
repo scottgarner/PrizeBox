@@ -1,14 +1,7 @@
 <script setup lang="ts">
-import PrizeBox from "./lib/prizebox";
+import { PrizeBox, MessageType } from "./lib/prizebox";
 
 import { ref } from "vue";
-
-enum MessageType {
-  KEY_PRESS = 0x01,
-  SET_LIGHT_STATE = 0x02,
-  TRIGGER_UNLOCK = 0x03,
-  TRIGGER_BUZZER = 0x04,
-}
 
 let prizeBox = new PrizeBox();
 
