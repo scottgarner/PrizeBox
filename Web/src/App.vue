@@ -10,7 +10,7 @@ prizeBox.onMessage((data) => {
   const index = data[3];
   const value = data[4];
 
-  if (type == 0x01) active.value[index] = value;
+  if (type == 0x01) keyState.value[index] = value;
 
   if (type == 0x02) {
     if (value == 1) {
@@ -30,11 +30,10 @@ prizeBox
     console.error("Failed to connect to MIDI device", err);
   });
 
-const triggers = ["SUCCESS", "FAILURE", "STANDBY"];
-const triggerState = ref([0, 0, 0]);
-
 const keys = [1, 2, 3, 4, 5, 6, 7, 8, 9, "Cancel", 0, "Enter"];
-const active = ref([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+
+const triggerState = ref([0, 0, 0]);
+const keyState = ref([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 </script>
 
 <template>
@@ -132,7 +131,7 @@ const active = ref([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
           v-for="(key, index) in keys"
           :key="key"
           class="bg-gray-800 text-white rounded-2xl text-xl py-6 px-2 shadow-md"
-          :class="[active[index] == 1 ? 'bg-pink-500' : 'bg-gray-800']"
+          :class="[keyState[index] == 1 ? 'bg-pink-500' : 'bg-gray-800']"
         >
           {{ key }}
         </button>
