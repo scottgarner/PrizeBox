@@ -11,14 +11,61 @@ const uint8_t boardSelectB = D18;
 
 const uint8_t interruptPin = D6;
 
-const uint8_t mosfettiPinA = D3;
-const uint8_t mosfettiPinB = D2;
-const uint8_t mosfettiPinC = D1;
-const uint8_t mosfettiPinD = D0;
+const uint8_t mosfetAPin = D3;
+const uint8_t mosfetBPin = D2;
+const uint8_t mosfetCPin = D1;
+const uint8_t mosfetDPin = D0;
 
 const uint8_t buzzerPin = D22;
 
-// Configuration.
+// Data types.
+
+const byte SYSEX_HEADER = 0xf0;
+const byte SYSEX_VENDOR = 0x7d;
+const byte SYSEX_FOOTER = 0xf7;
+
+enum MessageType
+{
+    KEY_PRESS_0 = 0x00,
+    KEY_PRESS_1 = 0x01,
+    KEY_PRESS_2 = 0x02,
+    KEY_PRESS_3 = 0x03,
+    KEY_PRESS_4 = 0x04,
+    KEY_PRESS_5 = 0x05,
+    KEY_PRESS_6 = 0x06,
+    KEY_PRESS_7 = 0x07,
+    KEY_PRESS_8 = 0x08,
+    KEY_PRESS_9 = 0x09,
+
+    KEY_PRESS_CANCEL = 0x0a,
+    KEY_PRESS_ENTER = 0x0b,
+
+    SET_FAILURE = 0x20,
+    SET_STANDBY = 0x30,
+    SET_SUCCESS = 0x40,
+
+    TRIGGER_BUZZER = 0x50,
+    TRIGGER_UNLOCK = 0x60
+};
+
+int keymap[12] = {
+    KEY_PRESS_1,
+    KEY_PRESS_2,
+    KEY_PRESS_3,
+    KEY_PRESS_4,
+    KEY_PRESS_5,
+    KEY_PRESS_6,
+    KEY_PRESS_7,
+    KEY_PRESS_8,
+    KEY_PRESS_9,
+    KEY_PRESS_CANCEL,
+    KEY_PRESS_0,
+    KEY_PRESS_ENTER};
+
+// MPR-121 Configuration.
+
+TwoWire *wire_ptr = &Wire;
+MPR121 mpr121;
 
 const MPR121::DeviceAddress device_address = MPR121::ADDRESS_5A;
 
@@ -40,124 +87,105 @@ const MPR121::ChargeDischargeTime charge_discharge_time = MPR121::CHARGE_DISCHAR
 const MPR121::FirstFilterIterations first_filter_iterations = MPR121::FIRST_FILTER_ITERATIONS_34;
 const MPR121::SecondFilterIterations second_filter_iterations = MPR121::SECOND_FILTER_ITERATIONS_10;
 
-// Data types.
-
-enum MessageType
-{
-    KEY_PRESS = 0x01,
-    SET_LIGHT_STATE = 0x02,
-    TRIGGER_UNLOCK = 0x03,
-    TRIGGER_BUZZER = 0x04,
-};
-
 // MIDI setup.
 
 Adafruit_USBD_MIDI usb_midi;
 MIDI_CREATE_INSTANCE(Adafruit_USBD_MIDI, usb_midi, MIDI);
 
-// MPR121 setup.
-
-TwoWire *wire_ptr = &Wire;
-
-MPR121 mpr121;
-
-// Globals.
+// Global state.
 
 uint16_t lastStatus = 0;
+unsigned long lastBeepTime = 0;
+unsigned long lastBeepDuration = 0;
+
+void triggerBuzzer(unsigned long duration)
+{
+    lastBeepTime = millis();
+    lastBeepDuration = duration;
+}
 
 void handleSystemExclusive(byte *array, unsigned size)
 {
-
     MessageType type = (MessageType)array[2];
-    uint8_t channel = array[3];
-    uint8_t value = array[4];
+    uint8_t value = array[3];
 
-    if (type == SET_LIGHT_STATE)
+    switch (type)
     {
-        switch (channel)
-        {
-        case 0:
-            digitalWrite(mosfettiPinA, value);
-            break;
-        case 1:
-            digitalWrite(mosfettiPinB, value);
-            break;
-        case 2:
-            digitalWrite(mosfettiPinC, value);
-            break;
-        }
-    }
+    case SET_FAILURE:
+        digitalWrite(mosfetAPin, value);
+        break;
+    case SET_SUCCESS:
+        digitalWrite(mosfetBPin, value);
+        break;
+    case SET_STANDBY:
+        digitalWrite(mosfetCPin, value);
+        break;
+    case TRIGGER_BUZZER:
+        triggerBuzzer(value * 10);
+        break;
 
-    if (type == TRIGGER_UNLOCK)
-    {
-        digitalWrite(mosfettiPinD, HIGH);
+    case TRIGGER_UNLOCK:
+        digitalWrite(mosfetDPin, HIGH);
         delay(100);
-        digitalWrite(mosfettiPinD, LOW);
-    }
-
-    if (type == TRIGGER_BUZZER)
-    {
-        digitalWrite(buzzerPin, HIGH);
-        delay(50);
-        digitalWrite(buzzerPin, LOW);
-    }
+        digitalWrite(mosfetDPin, LOW);
+        break;
+    };
 }
 
 void setup()
 {
-    int boardIndex = (digitalRead(boardSelectA) << 1) | digitalRead(boardSelectB);
-
-    String productDescriptor = "CodeTV Board " + String(boardIndex);
-    String serialDescriptor = "SN0000" + String(boardIndex);
-
-    TinyUSBDevice.setManufacturerDescriptor("High Order");
-    TinyUSBDevice.setProductDescriptor(productDescriptor.c_str());
-    TinyUSBDevice.setSerialDescriptor(serialDescriptor.c_str());
-
     Serial.begin(115200);
+
+    // Initialize USB.
+    {
+        int boardIndex = (digitalRead(boardSelectA) << 1) | digitalRead(boardSelectB);
+
+        String productDescriptor = "CodeTV Board " + String(boardIndex);
+        String serialDescriptor = "SN0000" + String(boardIndex);
+
+        TinyUSBDevice.setManufacturerDescriptor("High Order");
+        TinyUSBDevice.setProductDescriptor(productDescriptor.c_str());
+        TinyUSBDevice.setSerialDescriptor(serialDescriptor.c_str());
+
+        if (!TinyUSBDevice.isInitialized())
+        {
+            TinyUSBDevice.begin(0);
+        }
+    }
 
     // Pin configuration.
-
-    pinMode(buzzerPin, OUTPUT);
-    digitalWrite(buzzerPin, LOW);
-
-    pinMode(mosfettiPinA, OUTPUT);
-    digitalWrite(mosfettiPinA, LOW);
-
-    pinMode(mosfettiPinB, OUTPUT);
-    digitalWrite(mosfettiPinB, LOW);
-
-    pinMode(mosfettiPinC, OUTPUT);
-    digitalWrite(mosfettiPinC, LOW);
-
-    pinMode(mosfettiPinD, OUTPUT);
-    digitalWrite(mosfettiPinD, LOW);
-
-    pinMode(interruptPin, INPUT_PULLUP);
-    //
-    // Manual begin() is required on core without built-in support e.g. mbed rp2040
-    if (!TinyUSBDevice.isInitialized())
     {
-        TinyUSBDevice.begin(0);
+        pinMode(buzzerPin, OUTPUT);
+        digitalWrite(buzzerPin, LOW);
+
+        pinMode(mosfetAPin, OUTPUT);
+        digitalWrite(mosfetAPin, LOW);
+
+        pinMode(mosfetBPin, OUTPUT);
+        digitalWrite(mosfetBPin, LOW);
+
+        pinMode(mosfetCPin, OUTPUT);
+        digitalWrite(mosfetCPin, LOW);
+
+        pinMode(mosfetDPin, OUTPUT);
+        digitalWrite(mosfetDPin, LOW);
+
+        pinMode(interruptPin, INPUT_PULLUP);
     }
 
-    Serial.begin(115200);
-
-    // usb_midi.setStringDescriptor("TinyUSB MIDI");
-
-    // Initialize MIDI, and listen to all MIDI channels
-    // This will also call usb_midi's begin()
-    MIDI.begin(MIDI_CHANNEL_OMNI);
-
-    // If already enumerated, additional class driverr begin() e.g msc, hid, midi won't take effect until re-enumeration
-    if (TinyUSBDevice.mounted())
+    // Initialize MIDI.
     {
-        TinyUSBDevice.detach();
-        delay(10);
-        TinyUSBDevice.attach();
-    }
+        MIDI.begin(MIDI_CHANNEL_OMNI);
 
-    MIDI.setHandleSystemExclusive(handleSystemExclusive);
+        if (TinyUSBDevice.mounted())
+        {
+            TinyUSBDevice.detach();
+            delay(10);
+            TinyUSBDevice.attach();
+        }
+
+        MIDI.setHandleSystemExclusive(handleSystemExclusive);
+    }
 
     // MPR121 setup.
     {
@@ -189,45 +217,52 @@ void setup()
 
 void loop()
 {
-
-#ifdef TINYUSB_NEED_POLLING_TASK
-    // Manual call tud_task since it isn't called by Core's background
-    TinyUSBDevice.task();
-#endif
-
-    // not enumerated()/mounted() yet: nothing to do
+    // Wait for USB mount.
     if (!TinyUSBDevice.mounted())
     {
         return;
     }
 
+    // Read MIDI messages.
     MIDI.read();
 
+    // Handle MPR-121 input.
     if (digitalRead(interruptPin) == LOW)
     {
-
         uint16_t currentStatus = mpr121.getTouchStatus(device_address);
+
         for (uint8_t i = 0; i < 12; i++)
         {
             bool wasTouched = lastStatus & (1 << i);
             bool isTouched = currentStatus & (1 << i);
 
+            uint8_t key = keymap[i];
+
             if (!wasTouched && isTouched)
             {
-                uint8_t msg[] = {0xF0, 0x7D, 0x01, i, 1, 0xF7};
+                uint8_t msg[] = {SYSEX_HEADER, SYSEX_VENDOR, key, 1, SYSEX_FOOTER};
                 MIDI.sendSysEx(sizeof(msg), msg, true);
 
-                digitalWrite(buzzerPin, HIGH);
-                delay(50);
-                digitalWrite(buzzerPin, LOW);
+                triggerBuzzer(50);
             }
             else if (wasTouched && !isTouched)
             {
-                uint8_t msg[] = {0xF0, 0x7D, 0x01, i, 0, 0xF7};
+                uint8_t msg[] = {SYSEX_HEADER, SYSEX_VENDOR, key, 0, SYSEX_FOOTER};
                 MIDI.sendSysEx(sizeof(msg), msg, true);
             }
         }
 
         lastStatus = currentStatus;
+    }
+
+    // Handle beeps.
+    if (millis() - lastBeepTime < lastBeepDuration)
+    {
+        digitalWrite(buzzerPin, HIGH);
+    }
+    else
+    {
+        digitalWrite(buzzerPin, LOW);
+        lastBeepDuration = 0;
     }
 }
