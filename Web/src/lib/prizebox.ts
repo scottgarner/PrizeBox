@@ -1,3 +1,5 @@
+// TODO: Multi-bay add bay parameter.
+
 export enum MessageType {
   KEY_PRESS_0 = 0x00,
   KEY_PRESS_1 = 0x01,
@@ -19,6 +21,8 @@ export enum MessageType {
 
   TRIGGER_BUZZER = 0x50,
   TRIGGER_UNLOCK = 0x60,
+
+  TRIGGER_RESET = 0x70,
 }
 
 export enum SysEx {
@@ -179,7 +183,7 @@ export class PrizeBox {
       SysEx.HEADER,
       SysEx.VENDOR,
       MessageType.TRIGGER_BUZZER,
-      50,
+      5,
       SysEx.FOOTER,
     ]);
   }
@@ -189,6 +193,16 @@ export class PrizeBox {
       SysEx.HEADER,
       SysEx.VENDOR,
       MessageType.TRIGGER_UNLOCK,
+      1,
+      SysEx.FOOTER,
+    ]);
+  }
+
+  triggerReset(): void {
+    this.send([
+      SysEx.HEADER,
+      SysEx.VENDOR,
+      MessageType.TRIGGER_RESET,
       1,
       SysEx.FOOTER,
     ]);

@@ -45,7 +45,9 @@ enum MessageType
     SET_SUCCESS = 0x40,
 
     TRIGGER_BUZZER = 0x50,
-    TRIGGER_UNLOCK = 0x60
+    TRIGGER_UNLOCK = 0x60,
+
+    TRIGGER_RESET = 0x70,
 };
 
 int keymap[12] = {
@@ -98,6 +100,37 @@ uint16_t lastStatus = 0;
 unsigned long lastBeepTime = 0;
 unsigned long lastBeepDuration = 0;
 
+void resetSensor()
+{
+    // TODO: MPR-121 register reset.
+    // mpr121.writeRegister(0x80, 0x63);
+    // delay(1);
+
+    mpr121.setupSingleDevice(*wire_ptr,
+                             device_address,
+                             fast_mode);
+
+    mpr121.setAllChannelsThresholds(touch_threshold,
+                                    release_threshold);
+    mpr121.setDebounce(device_address,
+                       touch_debounce,
+                       release_debounce);
+    mpr121.setBaselineTracking(device_address,
+                               baseline_tracking);
+    mpr121.setChargeDischargeCurrent(device_address,
+                                     charge_discharge_current);
+    mpr121.setChargeDischargeTime(device_address,
+                                  charge_discharge_time);
+    mpr121.setFirstFilterIterations(device_address,
+                                    first_filter_iterations);
+    mpr121.setSecondFilterIterations(device_address,
+                                     second_filter_iterations);
+    mpr121.setSamplePeriod(device_address,
+                           sample_period);
+
+    mpr121.startAllChannels();
+}
+
 void triggerBuzzer(unsigned long duration)
 {
     lastBeepTime = millis();
@@ -127,6 +160,22 @@ void handleSystemExclusive(byte *array, unsigned size)
     case TRIGGER_UNLOCK:
         digitalWrite(mosfetDPin, HIGH);
         delay(100);
+        digitalWrite(mosfetDPin, LOW);
+        break;
+
+    case TRIGGER_RESET:
+        digitalWrite(mosfetAPin, HIGH);
+        digitalWrite(mosfetBPin, HIGH);
+        digitalWrite(mosfetCPin, HIGH);
+        digitalWrite(mosfetDPin, HIGH);
+
+        resetSensor();
+
+        delay(1000);
+
+        digitalWrite(mosfetAPin, LOW);
+        digitalWrite(mosfetBPin, LOW);
+        digitalWrite(mosfetCPin, LOW);
         digitalWrite(mosfetDPin, LOW);
         break;
     };
@@ -189,29 +238,7 @@ void setup()
 
     // MPR121 setup.
     {
-        mpr121.setupSingleDevice(*wire_ptr,
-                                 device_address,
-                                 fast_mode);
-
-        mpr121.setAllChannelsThresholds(touch_threshold,
-                                        release_threshold);
-        mpr121.setDebounce(device_address,
-                           touch_debounce,
-                           release_debounce);
-        mpr121.setBaselineTracking(device_address,
-                                   baseline_tracking);
-        mpr121.setChargeDischargeCurrent(device_address,
-                                         charge_discharge_current);
-        mpr121.setChargeDischargeTime(device_address,
-                                      charge_discharge_time);
-        mpr121.setFirstFilterIterations(device_address,
-                                        first_filter_iterations);
-        mpr121.setSecondFilterIterations(device_address,
-                                         second_filter_iterations);
-        mpr121.setSamplePeriod(device_address,
-                               sample_period);
-
-        mpr121.startAllChannels();
+        resetSensor();
     }
 }
 

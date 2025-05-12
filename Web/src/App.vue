@@ -85,6 +85,8 @@ prizeBox
       <button class="trigger" @click="prizeBox.triggerUnlock()">UNLOCK</button>
 
       <button class="trigger" @click="prizeBox.triggerBuzzer()">BEEP</button>
+
+      <button class="trigger" @click="prizeBox.triggerReset()">RESET</button>
     </div>
     <div class="flex-1 bg-white">
       <div class="grid grid-cols-4 gap-4 p-4 max-w-sm mx-auto">
