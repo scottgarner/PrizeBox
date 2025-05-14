@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PrizeBox, MessageType } from "./lib/prizebox";
+import { PrizeBox, MessageType, BoardIdentifier } from "./lib/prizebox";
 
 import { ref } from "vue";
 
@@ -23,7 +23,7 @@ const keyMap = [
 
 let prizeBox = new PrizeBox();
 
-prizeBox.onMessage((data) => {
+prizeBox.onMessage((id: BoardIdentifier, data: Uint8Array) => {
   const type = data[2];
   const value = data[3];
 
@@ -36,16 +36,16 @@ prizeBox.onMessage((data) => {
   }
 });
 
-prizeBox.onKey((key) => {
+prizeBox.onKey((id: BoardIdentifier, key: number) => {
   console.log("Key!");
   console.log(key);
 });
 
-prizeBox.onCancel(() => {
+prizeBox.onCancel((id: BoardIdentifier) => {
   console.log("Cancel!");
 });
 
-prizeBox.onEnter(() => {
+prizeBox.onEnter((id: BoardIdentifier) => {
   console.log("Enter!");
 });
 
@@ -62,31 +62,64 @@ prizeBox
 <template>
   <div class="flex h-screen">
     <div class="w-1/4 bg-gray-100 p-4">
-      <button class="trigger" @click="prizeBox.setFailureOn()">
+      <button
+        class="trigger"
+        @click="prizeBox.setFailureOn(BoardIdentifier.CODETV_BOARD_0)"
+      >
         FAILURE ON
       </button>
-      <button class="trigger" @click="prizeBox.setFailureOff()">
+      <button
+        class="trigger"
+        @click="prizeBox.setFailureOff(BoardIdentifier.CODETV_BOARD_0)"
+      >
         FAILURE OFF
       </button>
 
-      <button class="trigger" @click="prizeBox.setSuccessOn()">
+      <button
+        class="trigger"
+        @click="prizeBox.setSuccessOn(BoardIdentifier.CODETV_BOARD_0)"
+      >
         SUCCESS ON
       </button>
-      <button class="trigger" @click="prizeBox.setSuccessOff()">
+      <button
+        class="trigger"
+        @click="prizeBox.setSuccessOff(BoardIdentifier.CODETV_BOARD_0)"
+      >
         SUCCESS OFF
       </button>
 
-      <button class="trigger" @click="prizeBox.setStandByOn()">
+      <button
+        class="trigger"
+        @click="prizeBox.setStandByOn(BoardIdentifier.CODETV_BOARD_0)"
+      >
         STANDBY ON
       </button>
-      <button class="trigger" @click="prizeBox.setStandByOff()">
+      <button
+        class="trigger"
+        @click="prizeBox.setStandByOff(BoardIdentifier.CODETV_BOARD_0)"
+      >
         STANDBY OFF
       </button>
-      <button class="trigger" @click="prizeBox.triggerUnlock()">UNLOCK</button>
+      <button
+        class="trigger"
+        @click="prizeBox.triggerUnlock(BoardIdentifier.CODETV_BOARD_0)"
+      >
+        UNLOCK
+      </button>
 
-      <button class="trigger" @click="prizeBox.triggerBuzzer()">BEEP</button>
+      <button
+        class="trigger"
+        @click="prizeBox.triggerBuzzer(BoardIdentifier.CODETV_BOARD_0)"
+      >
+        BEEP
+      </button>
 
-      <button class="trigger" @click="prizeBox.triggerReset()">RESET</button>
+      <button
+        class="trigger"
+        @click="prizeBox.triggerReset(BoardIdentifier.CODETV_BOARD_0)"
+      >
+        RESET
+      </button>
     </div>
     <div class="flex-1 bg-white">
       <div class="grid grid-cols-4 gap-4 p-4 max-w-sm mx-auto">

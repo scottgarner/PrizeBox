@@ -1,4 +1,9 @@
-// TODO: Multi-bay add bay parameter.
+export enum BoardIdentifier {
+  CODETV_BOARD_0 = "CodeTV Board 0",
+  CODETV_BOARD_1 = "CodeTV Board 1",
+  CODETV_BOARD_2 = "CodeTV Board 2",
+  CODETV_BOARD_3 = "CodeTV Board 3",
+}
 
 export enum MessageType {
   KEY_PRESS_0 = 0x00,
@@ -32,97 +37,134 @@ export enum SysEx {
 }
 
 export class PrizeBox {
-  private messageCallback: (data: Uint8Array) => void = () => {};
+  private messageCallback: (d: BoardIdentifier, data: Uint8Array) => void =
+    () => {};
+  private keyCallback?: (id: BoardIdentifier, key: number) => void = () => {};
+  private enterCallback?: (id: BoardIdentifier) => void = () => {};
+  private cancelCallback?: (id: BoardIdentifier) => void = () => {};
 
-  private keyCallback: (key: number) => void = () => {};
-  private enterCallback: () => void = () => {};
-  private cancelCallback: () => void = () => {};
+  private inputMap = new Map<BoardIdentifier, MIDIInput>();
+  private outputMap = new Map<BoardIdentifier, MIDIOutput>();
 
-  private output: MIDIOutput | null = null;
+  private getBoardIdentifier(name: string): BoardIdentifier | undefined {
+    return Object.values(BoardIdentifier).find((v) => v === name);
+  }
+
+  private updatePort(port: MIDIPort) {
+    const id = this.getBoardIdentifier(port.name!);
+    if (!id) return;
+
+    // Handle input ports.
+    if (port.type === "input") {
+      const input = port as MIDIInput;
+
+      if (port.state === "connected") {
+        console.log("Updating input device:", port.name, port.state);
+        input.onmidimessage = (e: MIDIMessageEvent) => {
+          this.handleMidiMessageEvent(id, e);
+        };
+        this.inputMap.set(id, input);
+      } else {
+        console.log("Removing input device:", input.name, input.state);
+        this.inputMap.delete(id);
+      }
+    }
+
+    // Handle output ports.
+    if (port.type === "output") {
+      const output = port as MIDIOutput;
+      if (port.state === "connected") {
+        console.log("Updating output device:", output.name, output.state);
+        this.outputMap.set(id, output);
+      } else {
+        console.log("Removing output device:", output.name, output.state);
+        this.outputMap.delete(id);
+      }
+    }
+  }
+
+  handleStateChange(e: MIDIConnectionEvent): void {
+    console.log("MIDI device state change:", e);
+    if (e.port) this.updatePort(e.port);
+  }
 
   async connect(): Promise<void> {
-    const midiAccess = await navigator.requestMIDIAccess({ sysex: true });
-    const outputs = Array.from(midiAccess.outputs.values());
-    const inputs = Array.from(midiAccess.inputs.values());
+    await navigator.requestMIDIAccess({ sysex: true }).then((midiAccess) => {
+      midiAccess.inputs.forEach((input: MIDIInput) => {
+        this.updatePort(input);
+      });
 
-    if (!outputs.length || !inputs.length) {
-      throw new Error("No MIDI ports found");
+      midiAccess.outputs.forEach((output: MIDIOutput) => {
+        this.updatePort(output);
+      });
+
+      midiAccess.onstatechange = (event: Event) =>
+        this.handleStateChange(event as MIDIConnectionEvent);
+    });
+  }
+
+  send(id: BoardIdentifier, bytes: number[] | Uint8Array): void {
+    if (this.outputMap.has(id)) {
+      const output = this.outputMap.get(id);
+      output!.send(bytes);
+    } else {
+      console.log("Output not found!");
     }
+  }
 
-    this.output = outputs[0];
+  private handleMidiMessageEvent(id: BoardIdentifier, e: MIDIMessageEvent) {
+    const data = new Uint8Array(e.data!);
 
-    inputs[0].onmidimessage = (e: MIDIMessageEvent) => {
-      console.log("Received", e.data);
+    // All messages
+    this.messageCallback(id, data);
 
-      const data = new Uint8Array(e.data!);
+    if (data[0] === SysEx.HEADER && data[1] === SysEx.VENDOR) {
+      const key = data[2];
+      const state = data[3];
 
-      // All messages
-      this.messageCallback(data);
-
-      console.log(data);
-      if (data[0] === SysEx.HEADER && data[1] === SysEx.VENDOR) {
-        const key = data[2];
-        const state = data[3];
-
-        console.log(key, state);
-
-        // Keys.
-        if (
-          key >= MessageType.KEY_PRESS_0 &&
-          key <= MessageType.KEY_PRESS_9 &&
-          state == 1
-        ) {
-          console.log(this, this.keyCallback);
-          this.keyCallback(key);
-        }
-
-        // Cancel.
-        if (key === MessageType.KEY_PRESS_CANCEL && state == 1) {
-          this.cancelCallback();
-        }
-
-        // Enter.
-        if (key === MessageType.KEY_PRESS_ENTER && state == 1) {
-          this.enterCallback();
-        }
+      // Keys.
+      if (
+        key >= MessageType.KEY_PRESS_0 &&
+        key <= MessageType.KEY_PRESS_9 &&
+        state == 1
+      ) {
+        this.keyCallback?.(id, key);
       }
-    };
 
-    outputs.forEach((o) => console.log("Output:", o.name));
-    inputs.forEach((i) => console.log("Input:", i.name));
-  }
+      // Cancel.
+      if (key === MessageType.KEY_PRESS_CANCEL && state == 1) {
+        this.cancelCallback?.(id);
+      }
 
-  send(bytes: number[] | Uint8Array): void {
-    console.log("Sending", bytes);
-
-    if (!this.output) {
-      console.log("Not connected");
-      return;
+      // Enter.
+      if (key === MessageType.KEY_PRESS_ENTER && state == 1) {
+        this.enterCallback?.(id);
+      }
     }
-
-    this.output.send(bytes);
   }
 
-  onMessage(callback: (data: Uint8Array) => void): void {
+  // Callbacks.
+
+  onMessage(callback: (id: BoardIdentifier, data: Uint8Array) => void): void {
     this.messageCallback = callback;
   }
 
-  onKey(callback: (key: number) => void): void {
+  onKey(callback: (id: BoardIdentifier, key: number) => void): void {
     this.keyCallback = callback;
   }
 
-  onCancel(callback: () => void): void {
+  onCancel(callback: (id: BoardIdentifier) => void): void {
     this.cancelCallback = callback;
   }
 
-  onEnter(callback: () => void): void {
+  onEnter(callback: (id: BoardIdentifier) => void): void {
     this.enterCallback = callback;
   }
 
   // Simple commands.
 
-  setFailureOn(): void {
-    this.send([
+  setFailureOn(id: BoardIdentifier): void {
+    this.send(id, [
       SysEx.HEADER,
       SysEx.VENDOR,
       MessageType.SET_FAILURE,
@@ -130,8 +172,8 @@ export class PrizeBox {
       SysEx.FOOTER,
     ]);
   }
-  setFailureOff(): void {
-    this.send([
+  setFailureOff(id: BoardIdentifier): void {
+    this.send(id, [
       SysEx.HEADER,
       SysEx.VENDOR,
       MessageType.SET_FAILURE,
@@ -140,8 +182,8 @@ export class PrizeBox {
     ]);
   }
 
-  setStandByOn(): void {
-    this.send([
+  setStandByOn(id: BoardIdentifier): void {
+    this.send(id, [
       SysEx.HEADER,
       SysEx.VENDOR,
       MessageType.SET_STANDBY,
@@ -149,8 +191,8 @@ export class PrizeBox {
       SysEx.FOOTER,
     ]);
   }
-  setStandByOff(): void {
-    this.send([
+  setStandByOff(id: BoardIdentifier): void {
+    this.send(id, [
       SysEx.HEADER,
       SysEx.VENDOR,
       MessageType.SET_STANDBY,
@@ -159,8 +201,8 @@ export class PrizeBox {
     ]);
   }
 
-  setSuccessOn(): void {
-    this.send([
+  setSuccessOn(id: BoardIdentifier): void {
+    this.send(id, [
       SysEx.HEADER,
       SysEx.VENDOR,
       MessageType.SET_SUCCESS,
@@ -168,8 +210,8 @@ export class PrizeBox {
       SysEx.FOOTER,
     ]);
   }
-  setSuccessOff(): void {
-    this.send([
+  setSuccessOff(id: BoardIdentifier): void {
+    this.send(id, [
       SysEx.HEADER,
       SysEx.VENDOR,
       MessageType.SET_SUCCESS,
@@ -178,8 +220,8 @@ export class PrizeBox {
     ]);
   }
 
-  triggerBuzzer(): void {
-    this.send([
+  triggerBuzzer(id: BoardIdentifier): void {
+    this.send(id, [
       SysEx.HEADER,
       SysEx.VENDOR,
       MessageType.TRIGGER_BUZZER,
@@ -188,8 +230,8 @@ export class PrizeBox {
     ]);
   }
 
-  triggerUnlock(): void {
-    this.send([
+  triggerUnlock(id: BoardIdentifier): void {
+    this.send(id, [
       SysEx.HEADER,
       SysEx.VENDOR,
       MessageType.TRIGGER_UNLOCK,
@@ -198,8 +240,8 @@ export class PrizeBox {
     ]);
   }
 
-  triggerReset(): void {
-    this.send([
+  triggerReset(id: BoardIdentifier): void {
+    this.send(id, [
       SysEx.HEADER,
       SysEx.VENDOR,
       MessageType.TRIGGER_RESET,
