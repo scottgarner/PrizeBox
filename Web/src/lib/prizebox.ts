@@ -105,6 +105,7 @@ export class PrizeBox {
 
   send(id: BoardIdentifier, bytes: number[] | Uint8Array): void {
     if (this.outputMap.has(id)) {
+      console.log("Sending to output:", id, bytes);
       const output = this.outputMap.get(id);
       output!.send(bytes);
     } else {

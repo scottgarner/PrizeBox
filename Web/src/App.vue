@@ -24,6 +24,8 @@ const keyMap = [
 let prizeBox = new PrizeBox();
 
 prizeBox.onMessage((id: BoardIdentifier, data: Uint8Array) => {
+  console.log("Board:", id, "Message:", data);
+
   const type = data[2];
   const value = data[3];
 
@@ -37,16 +39,15 @@ prizeBox.onMessage((id: BoardIdentifier, data: Uint8Array) => {
 });
 
 prizeBox.onKey((id: BoardIdentifier, key: number) => {
-  console.log("Key!");
-  console.log(key);
+  console.log("Board:", id, "Key:", key);
 });
 
 prizeBox.onCancel((id: BoardIdentifier) => {
-  console.log("Cancel!");
+  console.log("Board:", id, "Key:", "Cancel");
 });
 
 prizeBox.onEnter((id: BoardIdentifier) => {
-  console.log("Enter!");
+  console.log("Board:", id, "Key:", "Enter");
 });
 
 prizeBox
