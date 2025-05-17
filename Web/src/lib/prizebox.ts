@@ -91,6 +91,7 @@ export class PrizeBox {
   async connect(): Promise<void> {
     await navigator.requestMIDIAccess({ sysex: true }).then((midiAccess) => {
       midiAccess.inputs.forEach((input: MIDIInput) => {
+        console.log(input);
         this.updatePort(input);
       });
 

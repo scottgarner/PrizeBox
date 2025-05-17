@@ -73,8 +73,8 @@ const MPR121::DeviceAddress device_address = MPR121::ADDRESS_5A;
 
 const bool fast_mode = true;
 
-const uint8_t touch_threshold = 40;
-const uint8_t release_threshold = 30;
+const uint8_t touch_threshold = 50;
+const uint8_t release_threshold = 40;
 
 const uint8_t touch_debounce = 1;
 const uint8_t release_debounce = 1;
@@ -187,10 +187,16 @@ void setup()
 
     // Initialize USB.
     {
-        int boardIndex = (digitalRead(boardSelectA) << 1) | digitalRead(boardSelectB);
+        pinMode(boardSelectA, INPUT_PULLUP);
+        pinMode(boardSelectB, INPUT_PULLUP);
+
+        int lsb = (digitalRead(boardSelectA) == LOW) ? 1 : 0;
+        int msb = (digitalRead(boardSelectB) == LOW) ? 1 : 0;
+
+        int boardIndex = (msb << 1) | lsb;
 
         String productDescriptor = "CodeTV Board " + String(boardIndex);
-        String serialDescriptor = "SN0000" + String(boardIndex);
+        String serialDescriptor = "0000-00" + String(msb) + String(lsb);
 
         TinyUSBDevice.setManufacturerDescriptor("High Order");
         TinyUSBDevice.setProductDescriptor(productDescriptor.c_str());
@@ -204,6 +210,7 @@ void setup()
 
     // Pin configuration.
     {
+
         pinMode(buzzerPin, OUTPUT);
         digitalWrite(buzzerPin, LOW);
 
