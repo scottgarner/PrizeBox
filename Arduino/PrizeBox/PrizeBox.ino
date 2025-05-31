@@ -4,6 +4,16 @@
 #include <Adafruit_TinyUSB.h>
 #include <MIDI.h>
 
+#define IO1 D0
+#define IO2 D1
+#define IO3 D2
+#define IO4 D3
+
+#define IO5 D22
+#define IO6 D26
+#define IO7 D27
+#define IO8 D28
+
 // Pin definitions.
 
 const uint8_t boardSelectA = D19;
@@ -11,12 +21,12 @@ const uint8_t boardSelectB = D18;
 
 const uint8_t interruptPin = D6;
 
-const uint8_t mosfetAPin = D3;
-const uint8_t mosfetBPin = D2;
-const uint8_t mosfetCPin = D1;
-const uint8_t mosfetDPin = D0;
+const uint8_t mosfetAPin = IO8;
+const uint8_t mosfetBPin = IO7;
+const uint8_t mosfetCPin = IO6;
+const uint8_t mosfetDPin = IO5;
 
-const uint8_t buzzerPin = D22;
+const uint8_t buzzerPin = IO1;
 
 // Data types.
 
@@ -51,18 +61,20 @@ enum MessageType
 };
 
 int keymap[12] = {
-    KEY_PRESS_1,
-    KEY_PRESS_2,
-    KEY_PRESS_3,
-    KEY_PRESS_4,
-    KEY_PRESS_5,
-    KEY_PRESS_6,
-    KEY_PRESS_7,
     KEY_PRESS_8,
-    KEY_PRESS_9,
+    KEY_PRESS_7,
     KEY_PRESS_CANCEL,
     KEY_PRESS_0,
-    KEY_PRESS_ENTER};
+    KEY_PRESS_ENTER,
+    KEY_PRESS_9,
+
+    KEY_PRESS_6,
+    KEY_PRESS_3,
+    KEY_PRESS_2,
+    KEY_PRESS_1,
+    KEY_PRESS_4,
+    KEY_PRESS_5,
+};
 
 // MPR-121 Configuration.
 
@@ -167,7 +179,6 @@ void handleSystemExclusive(byte *array, unsigned size)
         digitalWrite(mosfetAPin, HIGH);
         digitalWrite(mosfetBPin, HIGH);
         digitalWrite(mosfetCPin, HIGH);
-        digitalWrite(mosfetDPin, HIGH);
 
         resetSensor();
 
@@ -176,7 +187,6 @@ void handleSystemExclusive(byte *array, unsigned size)
         digitalWrite(mosfetAPin, LOW);
         digitalWrite(mosfetBPin, LOW);
         digitalWrite(mosfetCPin, LOW);
-        digitalWrite(mosfetDPin, LOW);
         break;
     };
 }
@@ -196,7 +206,7 @@ void setup()
         int boardIndex = (msb << 1) | lsb;
 
         String productDescriptor = "CodeTV Board " + String(boardIndex);
-        String serialDescriptor = "0000-00" + String(msb) + String(lsb);
+        String serialDescriptor = "0000-0000-0000-0000-00" + String(msb) + String(lsb);
 
         TinyUSBDevice.setManufacturerDescriptor("High Order");
         TinyUSBDevice.setProductDescriptor(productDescriptor.c_str());
