@@ -21,10 +21,10 @@ const uint8_t boardSelectB = D18;
 
 const uint8_t interruptPin = D6;
 
-const uint8_t mosfetAPin = IO8;
-const uint8_t mosfetBPin = IO7;
-const uint8_t mosfetCPin = IO6;
-const uint8_t mosfetDPin = IO5;
+const uint8_t unlockPin = IO5;
+const uint8_t failurePin = IO6;
+const uint8_t successPin = IO7;
+const uint8_t standbyPin = IO8;
 
 const uint8_t buzzerPin = IO1;
 
@@ -157,36 +157,36 @@ void handleSystemExclusive(byte *array, unsigned size)
     switch (type)
     {
     case SET_FAILURE:
-        digitalWrite(mosfetAPin, value);
+        digitalWrite(failurePin, value);
         break;
     case SET_SUCCESS:
-        digitalWrite(mosfetBPin, value);
+        digitalWrite(successPin, value);
         break;
     case SET_STANDBY:
-        digitalWrite(mosfetCPin, value);
+        digitalWrite(standbyPin, value);
         break;
     case TRIGGER_BUZZER:
         triggerBuzzer(value * 10);
         break;
 
     case TRIGGER_UNLOCK:
-        digitalWrite(mosfetDPin, HIGH);
+        digitalWrite(unlockPin, HIGH);
         delay(100);
-        digitalWrite(mosfetDPin, LOW);
+        digitalWrite(unlockPin, LOW);
         break;
 
     case TRIGGER_RESET:
-        digitalWrite(mosfetAPin, HIGH);
-        digitalWrite(mosfetBPin, HIGH);
-        digitalWrite(mosfetCPin, HIGH);
+        digitalWrite(failurePin, HIGH);
+        digitalWrite(successPin, HIGH);
+        digitalWrite(standbyPin, HIGH);
 
         resetSensor();
 
         delay(1000);
 
-        digitalWrite(mosfetAPin, LOW);
-        digitalWrite(mosfetBPin, LOW);
-        digitalWrite(mosfetCPin, LOW);
+        digitalWrite(failurePin, LOW);
+        digitalWrite(successPin, LOW);
+        digitalWrite(standbyPin, LOW);
         break;
     };
 }
@@ -224,17 +224,17 @@ void setup()
         pinMode(buzzerPin, OUTPUT);
         digitalWrite(buzzerPin, LOW);
 
-        pinMode(mosfetAPin, OUTPUT);
-        digitalWrite(mosfetAPin, LOW);
+        pinMode(failurePin, OUTPUT);
+        digitalWrite(failurePin, LOW);
 
-        pinMode(mosfetBPin, OUTPUT);
-        digitalWrite(mosfetBPin, LOW);
+        pinMode(successPin, OUTPUT);
+        digitalWrite(successPin, LOW);
 
-        pinMode(mosfetCPin, OUTPUT);
-        digitalWrite(mosfetCPin, LOW);
+        pinMode(standbyPin, OUTPUT);
+        digitalWrite(standbyPin, LOW);
 
-        pinMode(mosfetDPin, OUTPUT);
-        digitalWrite(mosfetDPin, LOW);
+        pinMode(unlockPin, OUTPUT);
+        digitalWrite(unlockPin, LOW);
 
         pinMode(interruptPin, INPUT_PULLUP);
     }
